@@ -62,48 +62,18 @@ Given an action, the mountain car follows the following transition dynamics:
 Where power is a constant `0.0015`.
 The collisions at either end are inelastic with the velocity set to `0` upon collision with the wall. 
 
-### Changes made
+### Changes made for all algorithms
 
 1. We have continuous problem, so we have to discretize the action and observation spaces.
    - For example, the action space is discretized as follows:
      - `discetized_action_space = np.linspace(-1, 1, 10)`
      - `10` means that we have `10 possible actions` in the `action space`.
 
+2. In each algorithm, we have a Q-table so tried to fill it with zeros and random values.
 
-### Algorithms
+### Metrics
 
-The following algorithms are implemented to solve the problem:\
-   1. [Q-learning](#Q-learning)
-   2. [SARSA](#SARSA)
-   3. Monte Carlo Control on-policy
-   4. Monte Carlo Control off-policy
-
-
-
-### Q-learning
-
-Q-learning is a model-free reinforcement learning algorithm to learn the value of an action in a particular state.
-
-#### Pseudocode
-
-
-![Pseudocode](Pseudocodes/q-learning.jpg)
-<p align="center">Zdroj: Sutton-Barto: Reinforcement Learning, 2nd ed., 2018</p>
-
-### Changes made
-
-1. By pseudocode, we initialize the Q-table with random values, except for the terminal state. But in our case, we have 2 implementations zeros and random values. 
-
-#### Results
-
-The hyperparameters used in the Q-learning algorithm are as follows:
-
-1. `Alpha` (learning rate) 
-2. `Gamma` (discount factor) = `0.99`
-3. `Epsilon` (exploration rate) = `0.1`
-4. `Episodes` (count of steps needed to reach the goal)
-5. `Decay Rate` (rate at which the epsilon decreases)
-   - Each step of the episode, the `epsilon = epsilon - decay_rate`
+The metrics used to evaluate the performance of the algorithms are as follows:
 
 The metrics used to evaluate the performance of the Q-learning algorithm are as follows:
 
@@ -115,7 +85,56 @@ The metrics used to evaluate the performance of the Q-learning algorithm are as 
    - `np.mean(steps)`
 4. `Success rate`
    - `np.sum(np.array(self.rewards) > -200) / len(self.rewards)`
-   
+
+
+### Structure
+
+   1. [Q-learning](#Q-learning)
+   2. [SARSA](#SARSA)
+   3. [Monte Carlo Control on-policy](#Monte-Carlo-Control-on-policy)
+   4. [Monte Carlo Control off-policy](#Monte-Carlo-Control-off-policy)
+
+### Algorithms implementations
+
+The codes for the algorithms are as follows:
+
+1. [Q-learning](Algorithms/q-learning.py)
+2. [SARSA](Algorithms/sarsa.py)
+3. [Monte Carlo Control on-policy](Algorithms/monte_carlo_control_on_policy.py)
+4. [Monte Carlo Control off-policy](Algorithms/monte_carlo_control_off_policy.py)
+
+
+### Weights
+
+All weights are saved in the `weights/names_of_algorithm` folder.
+
+
+### Q-learning
+
+Q-learning is a model-free temporal difference reinforcement learning algorithm to learn the value of an action in a particular state.
+
+
+#### Pseudocode
+
+
+![Pseudocode](Pseudocodes/q-learning.jpg)
+<p align="center">Zdroj: Sutton-Barto: Reinforcement Learning, 2nd ed., 2018</p>
+
+
+#### Results
+
+The hyperparameters used in the Q-learning algorithm are as follows:
+
+1. `Alpha` (learning rate)
+2. `Gamma` (discount factor) = `0.99`
+3. `Epsilon` (exploration rate) = `0.1`
+4. `Episodes` (count of steps needed to reach the goal)
+5. `Decay Rate` (rate at which the epsilon decreases)
+   - Each step of the episode, the `epsilon = epsilon - decay_rate`
+6. `Use Random Values` (initialize the Q-table with random values or zeros)
+7. `Action Space Steps` (count of steps in the action space)
+8. `Obs Space Dimensions` (dimensions of the observation space)
+
 
 | Experiment | Alpha | Gamma | Epsilon | Decay Rate | Episodes | Use Random Values | Action Space Steps | Obs Space Dimensions | Avg Reward | Max Reward | Avg Steps  | Success Rate |
 |------------|-------|-------|---------|------------|----------|-------------------|--------------------|----------------------|------------|------------|------------|--------------|
@@ -138,7 +157,7 @@ The metrics used to evaluate the performance of the Q-learning algorithm are as 
 
 ### SARSA
 
-SARSA is a model-free reinforcement learning algorithm to learn the value of an action in a particular state.
+SARSA is a model-free temporal difference reinforcement learning algorithm to learn the value of an action in a particular state.
 
 #### Pseudocode
 
@@ -147,8 +166,7 @@ SARSA is a model-free reinforcement learning algorithm to learn the value of an 
 
 ### Changes made
 
-1. By pseudocode, we initialize the Q-table with random values, except for the terminal state. But in our case, we have 2 implementations zeros and random values.
-2. We limit the number of steps in the episode to `100_000`. Because the car can't reach the goal in some cases.
+1. We limit the number of steps in the episode to `100_000`. Because the car can't reach the goal in some cases.
    - So episodes will end if the car reaches the goal or the number of steps exceeds `100_000`.
 
 #### Results
@@ -161,20 +179,9 @@ The hyperparameters used in the SARSA algorithm are as follows:
 4. `Episodes` (count of steps needed to reach the goal)
 5. `Decay Rate` (rate at which the epsilon decreases)
    - Each step of the episode, the `epsilon = epsilon - decay_rate`
-
-
-The metrics used to evaluate the performance of the SARSA algorithm are as follows:
-
-1. `Average reward`
-   - `np.mean(total_rewards)`
-2. `Max reward`
-    - `np.max(total_rewards)`
-3. `Average steps`
-    - `np.mean(steps)`
-4. `Success rate`
-    - `np.sum(np.array(self.rewards) > -200) / len(self.rewards)`
-
-
+6. `Use Random Values` (initialize the Q-table with random values or zeros)
+7. `Action Space Steps` (count of steps in the action space)
+8. `Obs Space Dimensions` (dimensions of the observation space)
 
 | Experiment | Alpha | Gamma | Epsilon | Decay Rate | Episodes | Use Random Values | Action Space Steps | Obs Space Dimensions  | Avg Reward  | Max Reward | Avg Steps | Success Rate |
 |------------|-------|-------|---------|------------|----------|-------------------|--------------------|-----------------------|-------------|------------|-----------|---------|
@@ -197,7 +204,6 @@ The metrics used to evaluate the performance of the SARSA algorithm are as follo
 
 ### Monte Carlo Control on-policy
 Monte Carlo Control is a model-free reinforcement learning algorithm to learn the value of an action in a particular state.
-
 #### Pseudocode
 
 ![Pseudocode](Pseudocodes/monte_carlo_control_on_policy.jpg)
@@ -205,15 +211,43 @@ Monte Carlo Control is a model-free reinforcement learning algorithm to learn th
 
 ### Changes made
 
-1. By pseudocode, we initialize the Q-table with random values, except for the terminal state. But in our case, we have 2 implementations zeros and random values.
+1. We limit the number of steps in the episode to `100_000`. Because the car can't reach the goal in some cases.
+   - So episodes will end if the car reaches the goal or the number of steps exceeds `100_000`.
+
+2. We initialize early check, if count of episodes which have len of steps more than `100_000` is more than `5` then we stop the training.
+
 
 #### Results
 
 The hyperparameters used in the Monte Carlo Control on-policy algorithm are as follows:
 
-1. `Alpha` (learning rate)
 
+1. `Gamma` (discount factor) 
+2. `Epsilon` (exploration rate) 
+3. `Episodes` (count of steps needed to reach the goal)
+4. `Decay Rate` (rate at which the epsilon decreases)
+   - Each step of the episode, the `epsilon = epsilon - decay_rate`
+5. `Use Random Values` (initialize the Q-table with random values or zeros)
+6. `Action Space Steps` (count of steps in the action space)
+7. `Obs Space Dimensions` (dimensions of the observation space)
 
+| Experiment | Gamma | Epsilon | Decay Rate | Episodes | Use Random Values | Action Space Steps | Obs Space Dimensions | Avg Reward | Max Reward | Avg Steps | Success Rate |
+|------------|-------|---------|------------|----------|-------------------|--------------------|----------------------|------------|------------|-----------|--------------|
+| 1          | 0.8   | 0.8     | 0.001      | 500      | False             | 5                  | [20, 20]             | -766.90    | 22.30      | 2508.18   | 0.21         |
+| 2          | 0.9   | 0.6     | 0.0001     | 500      | True              | 5                  | [50, 50]             | -592.33    | 24.10      | 1920.95   | 0.19         |
+| 3          | 0.99  | 0.5     | 0.0001     | 500      | False             | 5                  | [50, 50]             | -241.95    | 38.80      | 880.69    | 0.59         |
+| 4          | 0.8   | 0.5     | 0.0001     | 500      | True              | 5                  | [100, 100]           | -3920.73   | -140.20    | 13737.01  | 0.01         |
+| 5          | 0.9   | 0.65    | 0.0001     | 500      | False             | 5                  | [40, 40]             | -1438.22   | -37.20     | 3997.39   | 0.09         |
+| 6          | 0.99  | 0.4     | 0.0001     | 500      | True              | 3                  | [100, 100]           | -5.09      | 76.50      | 918.79    | 0.98         |
+| 7          | 0.8   | 0.5     | 0.0001     | 500      | False             | 10                 | [20, 20]             | -89498.67  | -2203.80   | 62022.33  | 0.00         |
+| 8          | 0.9   | 0.45    | 0.0001     | 500      | True              | 5                  | [50, 50]             | -1705.62   | 23.10      | 6693.23   | 0.13         |
+| 9          | 0.99  | 0.4     | 0.0001     | 500      | False             | 9                  | [20, 20]             | -69145.07  | -1456.80   | 71208.88  | 0.00         |
+| 10         | 0.8   | 0.5     | 0.0001     | 1000     | True              | 10                 | [20, 20]             | -10579.18  | -365.10    | 8063.42   | 0.00         |
+| 11         | 0.9   | 0.55    | 0.0001     | 1000     | False             | 5                  | [50, 50]             | -536.68    | 16.70      | 1988.63   | 0.28         |
+| 12         | 0.99  | 0.8     | 0.0009     | 1000     | True              | 3                  | [50, 50]             | 11.83      | 82.20      | 1313.04   | 0.97         |
+| 13         | 0.8   | 0.6     | 0.0005     | 1000     | False             | 10                 | [20, 20]             | -132181.50  | -3601.80   | 73095.83  | 0.00         |
+| 14         | 0.9   | 0.45    | 0.0005     | 1000     | True              | 5                  | [50, 50]             | -9416.94    | -167.50    | 37926.60  | 0.01         |
+| 15         | 0.99  | 0.4     | 0.0005     | 1000     | False             | 9                  | [50, 50]             | -82118.49   | -3098.90   | 74486.38  | 0.00         |
 
 
 ### Monte Carlo Control off-policy
@@ -225,33 +259,45 @@ Monte Carlo Control is a model-free reinforcement learning algorithm to learn th
 ![Pseudocode](Pseudocodes/monte_carlo.jpg)
 <p align="center">Zdroj: Sutton-Barto: Reinforcement Learning, 2nd ed., 2018</p>
 
-### Changes made
-
-1. By pseudocode, we initialize the Q-table with random values, except for the terminal state. But in our case, we have 2 implementations zeros and random values.
-
 
 #### Results
 
-| Experiment | Alpha | Gamma | Epsilon | Decay Rate | Episodes | Use Random Values | Action Space Steps | Obs Space Dimensions  | Avg Reward | Max Reward | Avg Steps | Success Rate |
-|------------|-------|-------|---------|------------|----------|-------------------|--------------------|-----------------------|------------|------------|-----------|--------------|
-| 1          | 0.1   | 0.8   | 0.8     | 0.001      | 500      | False             | 5                  | [20, 20]              | -375.10    | 71.25      | 9497.31   | 0.40         |
-| 2          | 0.1   | 0.9   | 0.6     | 0.0001     | 500      | True              | 5                  | [50, 50]              | -375.22    | 63.88      | 9500.80   | 0.44         |
-| 3          | 0.1   | 0.99  | 0.5     | 0.0001     | 500      | False             | 5                  | [50, 50]              | -373.86    | 62.15      | 9483.11   | 0.42         |
-| 4          | 0.2   | 0.8   | 0.5     | 0.0001     | 500      | True              | 5                  | [100, 100]            | -380.19    | 73.55      | 9602.50   | 0.44         |
-| 5          | 0.2   | 0.9   | 0.65    | 0.0001     | 500      | False             | 5                  | [40, 40]              | -404.36    | 70.40      | 10082.23  | 0.42         |
-| 6          | 0.2   | 0.99  | 0.4     | 0.0001     | 500      | True              | 3                  | [100, 100]            | -274.99    | 72.60      | 5624.08   | 0.53         |
-| 7          | 0.3   | 0.8   | 0.5     | 0.0001     | 500      | False             | 10                 | [20, 20]              | -455.70    | 75.80      | 13638.49  | 0.38         |
-| 8          | 0.3   | 0.9   | 0.45    | 0.0001     | 500      | True              | 5                  | [50, 50]              | -393.60    | 66.82      | 9872.10   | 0.43         |
-| 9          | 0.3   | 0.99  | 0.4     | 0.0001     | 500      | False             | 9                  | [20, 20]              | -485.01    | 69.69      | 14042.15  | 0.38         |
-| 10         | 0.4   | 0.8   | 0.5     | 0.0001     | 1000     | True              | 10                 | [20, 20]              | -492.86    | 73.78      | 14556.15  | 0.35         |
-| 11         | 0.4   | 0.9   | 0.55    | 0.0001     | 1000     | False             | 5                  | [50, 50]              | -354.49    | 77.80      | 9087.73   | 0.45         |
-| 12         | 0.4   | 0.99  | 0.8     | 0.0009     | 1000     | True              | 3                  | [50, 50]              | -297.19    | 78.10      | 5956.35   | 0.50         |
-| 13         | 0.5   | 0.8   | 0.6     | 0.0005     | 1000     | False             | 10                 | [20, 20]              | -497.48    | 69.17      | 14662.47  | 0.35         |
-| 14         | 0.5   | 0.9   | 0.45    | 0.0005     | 1000     | True              | 5                  | [50, 50]              | -379.50    | 79.95      | 9591.88   | 0.44         |
-| 15         | 0.5   | 0.99  | 0.4     | 0.0005     | 1000     | False             | 9                  | [50, 50]              | -468.27    | 82.08      | 13631.34  | 0.39         |
+The hyperparameters used in the Monte Carlo Control off-policy algorithm are as follows:
+
+1. `Gamma` (discount factor) 
+2. `Epsilon` (exploration rate) 
+3. `Episodes` (count of steps needed to reach the goal)
+4. `Decay Rate` (rate at which the epsilon decreases)
+   - Each step of the episode, the `epsilon = epsilon - decay_rate`
+5. `Use Random Values` (initialize the Q-table with random values or zeros)
+6. `Action Space Steps` (count of steps in the action space)
+7. `Obs Space Dimensions` (dimensions of the observation space)
 
 
 
+| Experiment | Gamma | Epsilon | Decay Rate | Episodes | Use Random Values | Action Space Steps | Obs Space Dimensions  | Avg Reward | Max Reward | Avg Steps | Success Rate |
+|------------|-------|---------|------------|----------|-------------------|--------------------|-----------------------|------------|------------|-----------|--------------|
+| 1          | 0.8   | 0.8     | 0.001      | 500      | False             | 5                  | [20, 20]              | -375.10    | 71.25      | 9497.31   | 0.40         |
+| 2          | 0.9   | 0.6     | 0.0001     | 500      | True              | 5                  | [50, 50]              | -375.22    | 63.88      | 9500.80   | 0.44         |
+| 3          | 0.99  | 0.5     | 0.0001     | 500      | False             | 5                  | [50, 50]              | -373.86    | 62.15      | 9483.11   | 0.42         |
+| 4          | 0.8   | 0.5     | 0.0001     | 500      | True              | 5                  | [100, 100]            | -380.19    | 73.55      | 9602.50   | 0.44         |
+| 5          | 0.9   | 0.65    | 0.0001     | 500      | False             | 5                  | [40, 40]              | -404.36    | 70.40      | 10082.23  | 0.42         |
+| 6          | 0.99  | 0.4     | 0.0001     | 500      | True              | 3                  | [100, 100]            | -274.99    | 72.60      | 5624.08   | 0.53         |
+| 7          | 0.8   | 0.5     | 0.0001     | 500      | False             | 10                 | [20, 20]              | -455.70    | 75.80      | 13638.49  | 0.38         |
+| 8          | 0.9   | 0.45    | 0.0001     | 500      | True              | 5                  | [50, 50]              | -393.60    | 66.82      | 9872.10   | 0.43         |
+| 9          | 0.99  | 0.4     | 0.0001     | 500      | False             | 9                  | [20, 20]              | -485.01    | 69.69      | 14042.15  | 0.38         |
+| 10         | 0.8   | 0.5     | 0.0001     | 1000     | True              | 10                 | [20, 20]              | -492.86    | 73.78      | 14556.15  | 0.35         |
+| 11         | 0.9   | 0.55    | 0.0001     | 1000     | False             | 5                  | [50, 50]              | -354.49    | 77.80      | 9087.73   | 0.45         |
+| 12         | 0.99  | 0.8     | 0.0009     | 1000     | True              | 3                  | [50, 50]              | -297.19    | 78.10      | 5956.35   | 0.50         |
+| 13         | 0.8   | 0.6     | 0.0005     | 1000     | False             | 10                 | [20, 20]              | -497.48    | 69.17      | 14662.47  | 0.35         |
+| 14         | 0.9   | 0.45    | 0.0005     | 1000     | True              | 5                  | [50, 50]              | -379.50    | 79.95      | 9591.88   | 0.44         |
+| 15         | 0.99  | 0.4     | 0.0005     | 1000     | False             | 9                  | [50, 50]              | -468.27    | 82.08      | 13631.34  | 0.39         |
 
+
+## Conclusion
+
+1. The Q-learning algorithm performed better than the SARSA algorithm in terms of the average reward, max reward, average steps, and success rate. 
+2. The Monte Carlo Control off-policy algorithm performed better than the Monte Carlo Control on-policy algorithm in terms of the average reward, max reward, average steps, and success rate.
+3. The Q-learning algorithm gets the highest metrics in most cases.
 
 

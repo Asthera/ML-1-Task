@@ -1,123 +1,164 @@
 import numpy as np
 import gymnasium as gym
-import matplotlib.pyplot as plt
 import pickle
 
 
-class MonteCarlosControlOffPolicy:
+class MonteCarloOnPolicy:
     def __init__(self,
                  env: gym.wrappers,
                  gamma: float,
                  epsilon: float,
                  decay_rate: float,
                  use_random_values: bool,
-                 obs_space_steps: [int, int],
+                 observation_space_steps: [int, int],
                  action_space_steps: int):
 
         self.env = env
+
+        # define arbitrary e-soft policy (random)
+        self.pi = np.full((observation_space_steps[0], observation_space_steps[1], action_space_steps),
+                          1.0 / action_space_steps)
+
+        # define Q(s, a) arbitrarily
+        if use_random_values:
+            self.Q = np.random.rand(observation_space_steps[0], observation_space_steps[1], action_space_steps)
+        else:
+            self.Q = np.zeros((observation_space_steps[0], observation_space_steps[1], action_space_steps))
+
+        # define Returns(s, a)
+        self.Returns = {}
 
         # define hyperparameters
         self.gamma = gamma
         self.epsilon = epsilon
         self.decay_rate = decay_rate
 
-        self.obs_space_steps = obs_space_steps
+        self.observation_space_steps = observation_space_steps
         self.action_space_steps = action_space_steps
 
         # define spaces
         self.action_space = np.linspace(-1.0, 1.0, action_space_steps)
-        self.position_space = np.linspace(-1.2, 0.6, obs_space_steps[0])
-        self.velocity_space = np.linspace(-0.07, 0.07, obs_space_steps[1])
+        self.position_space = np.linspace(-1.2, 0.6, observation_space_steps[0])
+        self.velocity_space = np.linspace(-0.07, 0.07, observation_space_steps[1])
 
-        # initialize Q(s, a)
-        if use_random_values:
-            self.Q = np.random.rand(obs_space_steps[0], obs_space_steps[1], action_space_steps)
-        else:
-            self.Q = np.zeros((obs_space_steps[0], obs_space_steps[1], action_space_steps))
-
-        # initialize C(s, a)
-        self.C = np.zeros((obs_space_steps[0], obs_space_steps[1], action_space_steps))
-
-        # initialize target policy
-        self.pi = np.argmax(self.Q, axis=2)
-
-        # steps, rewards to then plot it in the end
+        # steps/rewards to then plot it in the end
         self.steps = []
         self.rewards = []
 
-
-    def generate_episode(self, policy_b):
-
-        episode = []
-        state, info = self.env.reset()
-        state = self.discretize_state(state)
-
-        done = False
-
-        while not done:
-            probs = policy_b[state[0], state[1], :]
-            # print("Probs: ", probs)
-
-            action_index = np.random.choice(np.arange(self.action_space_steps), p=probs)
-
-            action = self.action_space[action_index]
-
-            state_, reward, done, truncated, info = self.env.step([action])
-            state_ = self.discretize_state(state_)
-            episode.append((state, action_index, reward))
-            state = state_
-
-        self.rewards.append(sum([x[2] for x in episode]))
-        self.steps.append(len(episode))
-
-        return episode
-
-    def train_on_episode(self, episode, policy_b):
-        G = 0
-        W = 1
-
-        # Here we iterate over the episode in reverse order
-        for t in reversed(range(len(episode))):
-            state, action, reward = episode[t]
-            G = self.gamma * G + reward
-
-            self.C[state[0], state[1], action] += W
-
-            # update Q(s, a)
-            # Q(s, a) = Q(s, a) + (W / C(s, a)) * (G - Q(s, a))
-            self.Q[state[0], state[1], action] += (W / self.C[state[0], state[1], action]) * (
-                    G - self.Q[state[0], state[1], action])
-
-            self.pi[state[0], state[1]] = np.argmax(self.Q[state[0], state[1], :])
-
-            if action != self.pi[state[0], state[1]]:
-                print(f"Action {action} != {self.pi[state[0], state[1]]}, breaking at {t}/{len(episode)}")
-                break
-
-            W = W / policy_b[state[0], state[1], action]
-
-    def train(self, episodes, policy_b):
-        for idx in range(episodes):
-            episode = self.generate_episode(policy_b)
-            self.train_on_episode(episode, policy_b)
-
-            print(f"Episode {idx}/{episodes} done")
+    def choose_action(self, state):
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(np.arange(self.action_space_steps))
+        else:
+            return np.argmax(self.pi[state[0], state[1], :])
 
     def discretize_state(self, state):
         position = np.digitize(state[0], self.position_space)
         velocity = np.digitize(state[1], self.velocity_space)
         return position, velocity
 
-    def save_weights(self, path: str):
-        np.save(path + "_Q" + ".npy", self.Q)
-        np.save(path + "_policy" + ".npy", self.pi)
-        np.save(path + "_C" + ".npy", self.C)
+    def generate_episode(self):
+        episode = []
+        state, info = self.env.reset()
+        state = self.discretize_state(state)
 
+        done = False
+
+        while not done and len(episode) < 100_000:
+            # choose action using epsilon-greedy policy
+            action = self.choose_action(state)
+
+            # take action
+            state_, reward, done, truncated, info = self.env.step([action])
+            state_ = self.discretize_state(state_)
+            episode.append((state, action, reward))
+            state = state_
+
+            # if len(episode) % 10000 == 0:
+            #     print(f"Generated episode step {len(episode)}")
+
+        # print("Generated episode length: ", len(episode), " steps.)")
+
+        self.steps.append(len(episode))
+        self.rewards.append(sum([r for (s, a, r) in episode]))
+
+        return episode
+
+    def train_on_episode(self, episode):
+        G = 0
+        episode_set = set([(s, a) for (s, a, r) in episode])
+
+        # Here we iterate over the episode in reverse order
+        for t in reversed(range(len(episode))):
+
+            state, action, reward = episode[t]
+
+            # Calculate the return
+            G = self.gamma * G + reward
+
+            # If the state-action pair is unique in this episode (first visit)
+            # then update the Q-value and policy
+            if (state, action) not in episode_set:
+                continue
+
+            # Update Returns and Q-values
+            if self.Returns.get((state, action)) is None:
+                self.Returns[(state, action)] = []
+
+            self.Returns[(state, action)].append(G)
+            self.Q[state[0], state[1], action] = np.mean(self.Returns[(state, action)])
+
+            # Policy improvement
+            best_action = np.argmax(self.Q[state[0], state[1], :])
+
+            for a in range(self.action_space_steps):
+                if a == best_action:
+                    self.pi[state[0], state[1], a] = (1 - self.epsilon) + (self.epsilon / self.action_space_steps)
+                else:
+                    self.pi[state[0], state[1], a] = self.epsilon / self.action_space_steps
+
+            # if t % 2000 == 0:
+            #     print(f"Episode step {t} done")
+
+    def train(self, episodes):
+
+        # we will use it for early stopping
+        stop = 0
+
+        for e in range(episodes):
+            episode = self.generate_episode()
+            self.train_on_episode(episode)
+            self.decrease_epsilon()
+
+            if len(episode) > 90_000:
+                stop += 1
+            else:
+                stop = 0
+
+
+            if stop > 4:
+                break
+
+            # print(f"Episode {e}/{episodes} done, steps: {len(episode)}")
+
+    def decrease_epsilon(self):
+        self.epsilon -= self.decay_rate
+
+        if self.epsilon < 0.01:
+            self.epsilon = 0.01
+
+    def save_weights(self, path: str):
+        np.save(path + "_Q", self.Q)
+        np.save(path + "_policy", self.pi)
+
+        with open(path + "_returns" + ".pkl", 'wb') as file:
+            pickle.dump(self.Returns, file)
 
     def load_weights(self, path: str):
         self.Q = np.load(path + "_Q" + ".npy")
         self.pi = np.load(path + "_policy" + ".npy")
-        self.C = np.load(path + "_C" + ".npy")
+
+        with open(path + "_returns" + ".pkl", 'rb') as file:
+            self.Returns = pickle.load(file)
 
     def get_steps(self):
         return self.steps
@@ -170,13 +211,11 @@ def test_one_hyperparameter(hyperparameter: [int, float, float, float, float, in
     action_space_steps = hyperparameter[7]
     obs_space_steps = hyperparameter[8]
 
-    policy_b = np.full((obs_space_steps[0], obs_space_steps[1], action_space_steps), 1 / action_space_steps)
-
     # Train agent
-    agent = MonteCarlosControlOffPolicy(env, gamma, epsilon, decay_rate, use_random_values, obs_space_steps,
-                                        action_space_steps)
-    agent.train(hyperparameter[5], policy_b)
-    agent.save_weights(f"weights/mc_off_policy/{hyperparameter[0]}")
+    agent = MonteCarloOnPolicy(env, gamma, epsilon, decay_rate, use_random_values, obs_space_steps,
+                               action_space_steps)
+    agent.train(hyperparameter[5])
+    agent.save_weights(f"weights/mc_on_policy/{hyperparameter[0]}")
     env.close()
 
     # Calculate metrics

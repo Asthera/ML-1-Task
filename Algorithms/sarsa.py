@@ -1,9 +1,8 @@
 import numpy as np
 import gymnasium as gym
-import matplotlib.pyplot as plt
 
 
-class QLearning:
+class SARSA:
     def __init__(self,
                  env: gym.wrappers,
                  gamma: float,
@@ -42,65 +41,66 @@ class QLearning:
         self.steps = []
         self.rewards = []
 
+    def choose_action(self, state):
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(np.arange(self.action_space_steps))
+        else:
+            return np.argmax(self.Q[state[0], state[1], :])
+
     def train_episode(self):
         state, info = self.env.reset()
         state = self.discretize_state(state)
+
+        # choose action using epsilon-greedy policy
+        action_index = self.choose_action(state)
+        action = self.action_space[action_index]
 
         done = False
         steps = 0
         rewards = 0
 
         while not done:
-            # choose action using epsilon-greedy policy
-            action_index = self.choose_action(state)
-
-            action = self.action_space[action_index]
-
             # take action
             state_, reward, done, truncated, info = self.env.step([action])
             state_ = self.discretize_state(state_)
 
+            # choose action using epsilon-greedy policy
+            action_index_ = self.choose_action(state_)
+            action_ = self.action_space[action_index_]
+
             # update Q(s, a)
-            # Q(s, a) = Q(s, a) + alpha * (reward + gamma * max(a)(Q(s_, a)) - Q(s, a))
+            # Q(s, a) = Q(s, a) + alpha * (reward + gamma * Q(s_, a_) - Q(s, a))
             self.Q[state[0], state[1], action_index] += self.alpha * (
-                    reward + self.gamma * np.max(self.Q[state_[0], state_[1], :]) - self.Q[
+                    reward + self.gamma * self.Q[state_[0], state_[1], action_index_] - self.Q[
                 state[0], state[1], action_index])
 
             state = state_
+            action = action_
 
             steps += 1
             rewards += reward
 
         return steps, rewards
 
-    def discretize_state(self, state: (float, float)):
+    def discretize_state(self, state):
 
         position = np.digitize(state[0], self.position_space)
         velocity = np.digitize(state[1], self.velocity_space)
 
         return position, velocity
 
-    def choose_action(self, state: (int, int)):
-        if np.random.rand() < self.epsilon:
-            return np.random.choice(np.arange(self.action_space_steps))
-        else:
-            return np.argmax(self.Q[state[0], state[1], :])
-
-    def train(self, episodes: int):
+    def train(self, episodes):
         for episode in range(episodes):
             steps, rewards = self.train_episode()
             self.steps.append(steps)
             self.rewards.append(rewards)
-
-            # if episode % 10 == 0:
-            #     print("Episode: {} Steps: {}".format(episode, steps))
+            # print("Episode: {} Steps: {}".format(episode, steps))
 
             self.decrease_epsilon()
 
-
-
     def decrease_epsilon(self):
         self.epsilon -= self.decay_rate
+
         if self.epsilon < 0.01:
             self.epsilon = 0.01
 
@@ -116,27 +116,6 @@ class QLearning:
     def get_rewards(self):
         return self.rewards
 
-    def plot(self, metric: str = "Rewards" or "Steps"):
-
-        if metric == "Rewards":
-            value = self.get_rewards()
-
-        elif metric == "Steps":
-            value = self.get_steps()
-
-        else:
-            raise ValueError("Invalid metric")
-
-        plt.plot(value, label=metric)
-
-        plt.title('Q-Learning')
-
-        plt.xlabel('Episode')
-        plt.ylabel('Value')
-
-        plt.legend()
-        plt.show()
-
     def get_average_reward(self):
         return np.mean(self.rewards)
 
@@ -148,7 +127,6 @@ class QLearning:
 
     def get_success_rate(self):
         return np.sum(np.array(self.rewards) > -200) / len(self.rewards)
-
 
 # Define hyperparameters
 # [experiment, alpha, gamma, epsilon, decay rate, episodes, use_random_values, action_space_steps, obs_space_steps]
@@ -184,9 +162,9 @@ def test_one_hyperparameter(hyperparameter: [int, float, float, float, float, in
     obs_space_steps = hyperparameter[8]
 
     # Train agent
-    agent = QLearning(env, gamma, alpha, epsilon, decay_rate, use_random_values, obs_space_steps, action_space_steps)
+    agent = SARSA(env, gamma, alpha, epsilon, decay_rate, use_random_values, obs_space_steps, action_space_steps)
     agent.train(hyperparameter[5])
-    agent.save_weights(f"weights/qlearning/{hyperparameter[0]}.npy")
+    agent.save_weights(f"weights/sarsa/{hyperparameter[0]}.npy")
     env.close()
 
     # Calculate metrics
@@ -200,12 +178,12 @@ def test_one_hyperparameter(hyperparameter: [int, float, float, float, float, in
 
 if __name__ == "__main__":
 
-    print("Q-Learning with different hyperparameters")
+    print("Sarsa with different hyperparameters")
     print("Hyperparameters: [experiment, alpha, gamma, epsilon, decay rate, episodes, use_random_values, action_space_steps, obs_space_steps]")
 
     for idx, hyperparameter in enumerate(hyperparameters):
-        print(f"Hyperparameters {hyperparameter} ")
         metrics = test_one_hyperparameter(hyperparameter)
+        print(f"Hyperparameters {hyperparameter} ")
         print(f"Average reward: {metrics[0]:.2f}")
         print(f"Max reward: {metrics[1]:.2f}")
         print(f"Average steps: {metrics[2]:.2f}")
